@@ -1,0 +1,1669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thanksgiving Won Family Jeopardy</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --board-bg: #0b1a33;
+      --tile-bg: #133166;
+      --tile-hover: #1c448a;
+      --tile-border: #2553a3;
+      --gold: #f5b731;
+      --gold-bright: #ffd15c;
+      --harvest: #d97706;
+    }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at top, #13294b 0%, #071124 75%);
+      color: #f8fafc;
+      min-height: 100vh;
+    }
+    .jeopardy-tile {
+      background: linear-gradient(160deg, #173a78 0%, #0f2754 100%);
+      border: 2px solid #2855a3;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 4px 10px rgba(0,0,0,0.35);
+      transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+    }
+    .jeopardy-tile:hover:not(:disabled) {
+      transform: translateY(-2px) scale(1.015);
+      background: linear-gradient(160deg, #1f4b99 0%, #14336b 100%);
+      border-color: var(--gold);
+      box-shadow: 0 0 18px rgba(245, 183, 49, 0.32);
+    }
+    .jeopardy-tile:disabled {
+      background: rgba(15, 31, 61, 0.45);
+      border-color: rgba(40, 85, 163, 0.28);
+      box-shadow: none;
+      cursor: default;
+    }
+    .category-header {
+      background: linear-gradient(180deg, #1a3f82 0%, #102a59 100%);
+      border: 2px solid #2e60b8;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.65);
+    }
+    .gold-text {
+      color: var(--gold-bright);
+      text-shadow: 0 2px 6px rgba(0,0,0,0.75);
+    }
+    .chalk-card {
+      background: linear-gradient(155deg, #13382c 0%, #0c261e 100%);
+      border: 3px solid #8c5a2b;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.65);
+    }
+    .modal-backdrop {
+      background: rgba(4, 10, 22, 0.84);
+      backdrop-filter: blur(5px);
+    }
+  </style>
+</head>
+<body class="flex flex-col antialiased selection:bg-amber-400 selection:text-slate-950">
+
+  <!-- Top Navigation / Controls -->
+  <header class="border-b border-blue-900/60 bg-slate-950/60 backdrop-blur-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5">
+        <span class="text-lg sm:text-xl font-black text-amber-300 bg-amber-500/20 border border-amber-400/50 rounded-lg px-2 py-0.5 leading-none" aria-hidden="true">₩</span>
+        <div>
+          <h1 class="text-sm sm:text-lg font-extrabold tracking-tight text-amber-300 leading-tight">
+            Thanksgiving Won Family Jeopardy
+          </h1>
+          <p class="text-[11px] sm:text-xs text-blue-200/80 font-medium">
+            <span id="clues-remaining-label">30 clues left</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+        <button id="btn-sound" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition flex items-center gap-1.5" title="Toggle sound effects">
+          <span id="sound-icon">🔊</span>
+          <span class="hidden sm:inline" id="sound-label">Sound On</span>
+        </button>
+        <button id="btn-phone-buzzers" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-900/80 hover:bg-indigo-800 border border-indigo-600/70 text-indigo-100 transition flex items-center gap-1">
+          <span>📱</span><span>Phone Buzzers</span>
+          <span id="phone-connected-badge" class="hidden px-1.5 py-0.2 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-black">0</span>
+        </button>
+        <button id="btn-teams" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition">
+          👥 Teams
+        </button>
+        <button id="btn-final" type="button" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition shadow-sm">
+          🏆 Final Question
+        </button>
+        <button id="btn-reset" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-950/80 hover:bg-rose-900 border border-rose-800/70 text-rose-200 transition">
+          ↺ New Game
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-6 py-3 sm:py-5 flex flex-col gap-4">
+
+    <!-- Scoreboard Strip -->
+    <section aria-label="Team Scoreboard" class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3" id="scoreboard"></section>
+
+    <!-- Jeopardy Board -->
+    <section aria-label="Game Board" class="flex-1 flex flex-col">
+      <div class="overflow-x-auto pb-2">
+        <div class="min-w-[660px] grid grid-cols-6 gap-2 sm:gap-2.5" id="board-grid"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Clue Modal -->
+  <div id="clue-modal" class="fixed inset-0 z-40 hidden items-center justify-center p-3 sm:p-6 modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-category">
+    <div class="w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl border-2 border-amber-400/50 bg-slate-900 flex flex-col max-h-[92vh]">
+      <!-- Modal Header -->
+      <div class="px-4 sm:px-6 py-3 bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950 border-b border-blue-800 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span id="modal-category" class="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-amber-300">CATEGORY</span>
+          <span class="text-blue-400">&bull;</span>
+          <span id="modal-value" class="text-sm sm:text-base font-black text-white">$100</span>
+          <span id="modal-daily-double-badge" class="hidden px-2 py-0.5 rounded-full text-[11px] font-black uppercase bg-amber-400 text-slate-950 tracking-wide">
+            ⚡ Double Credit!
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1.5 bg-slate-950/60 px-2.5 py-1 rounded-lg border border-blue-800/70">
+            <span class="text-xs font-mono font-bold" id="timer-display">0:10</span>
+            <button id="btn-timer-toggle" type="button" class="text-xs px-1.5 py-0.5 rounded bg-blue-800 hover:bg-blue-700 text-white font-semibold">Start</button>
+            <button id="btn-timer-reset" type="button" class="text-xs px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">↺</button>
+          </div>
+          <button id="btn-close-clue" type="button" class="text-slate-400 hover:text-white text-xl leading-none px-1.5" aria-label="Close clue">&times;</button>
+        </div>
+      </div>
+
+      <!-- Daily Double Wager Gate (shown before question if Daily Double) -->
+      <div id="daily-double-gate" class="hidden p-6 sm:p-8 text-center flex-col items-center gap-4 bg-gradient-to-b from-amber-950/50 to-slate-900">
+        <div class="text-4xl">⚡📚⚡</div>
+        <h2 class="text-2xl sm:text-3xl font-black text-amber-300 tracking-tight">POP QUIZ DOUBLE CREDIT!</h2>
+        <p class="text-sm sm:text-base text-slate-200 max-w-md">
+          <span id="dd-team-name" class="font-bold text-amber-300">Team</span> found a hidden bonus! Choose how many points to wager before seeing the question.
+        </p>
+        <div class="flex items-center gap-3 flex-wrap justify-center">
+          <label for="dd-wager-input" class="text-sm font-semibold text-slate-300">Wager ($):</label>
+          <input id="dd-wager-input" type="number" min="100" step="100" value="500" class="w-32 px-3 py-2 rounded-lg bg-slate-800 border border-amber-400/60 text-white font-bold text-center text-lg focus:outline-none focus:ring-2 focus:ring-amber-400" />
+          <span id="dd-max-note" class="text-xs text-slate-400"></span>
+        </div>
+        <button id="btn-dd-confirm" type="button" class="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm sm:text-base shadow-lg transition">
+          Lock In Wager &amp; Show Question
+        </button>
+      </div>
+
+      <!-- Clue Body -->
+      <div id="clue-body" class="p-5 sm:p-8 overflow-y-auto flex-1 flex flex-col gap-5">
+        <div class="chalk-card rounded-xl p-5 sm:p-7 text-center">
+          <p id="modal-question" class="text-lg sm:text-2xl font-bold text-white leading-snug"></p>
+        </div>
+
+        <!-- Team Buzzer Bar -->
+        <div id="buzzer-section" class="rounded-xl bg-slate-950/75 border border-blue-800/70 p-3 sm:p-4 flex flex-col gap-2.5">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <span id="buzzer-status" class="text-xs sm:text-sm font-bold text-amber-300">🔔 Buzzer Live — Press key 1–4 or tap your team!</span>
+            <button id="btn-reset-buzzer" type="button" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+              ↺ Reset Buzzer
+            </button>
+          </div>
+          <div id="buzzer-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+        </div>
+
+        <!-- 5th Grader Lifelines -->
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">
+              5th Grader Lifelines (<span id="lifeline-active-team" class="text-amber-300"></span>)
+            </span>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button id="btn-lifeline-peek" type="button" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-900/70 hover:bg-emerald-800 border border-emerald-600/60 text-emerald-100 transition disabled:opacity-35 disabled:cursor-not-allowed">
+                👀 Peek (Hint)
+              </button>
+              <button id="btn-lifeline-copy" type="button" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-900/70 hover:bg-indigo-800 border border-indigo-600/60 text-indigo-100 transition disabled:opacity-35 disabled:cursor-not-allowed">
+                📝 Copy 5th Grader
+              </button>
+              <button id="btn-lifeline-save" type="button" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-900/70 hover:bg-amber-800 border border-amber-600/60 text-amber-100 transition disabled:opacity-35 disabled:cursor-not-allowed">
+                🛡️ Save (No Penalty)
+              </button>
+            </div>
+          </div>
+
+          <div id="lifeline-output" class="hidden rounded-xl bg-slate-800/90 border border-slate-700 px-4 py-3 text-sm text-slate-100"></div>
+        </div>
+
+        <!-- Reveal Answer -->
+        <div id="answer-box" class="hidden rounded-xl bg-amber-500/10 border-2 border-amber-400/70 p-4 sm:p-5 text-center">
+          <div class="text-xs font-extrabold uppercase tracking-widest text-amber-300 mb-1">Correct Answer</div>
+          <div id="modal-answer" class="text-xl sm:text-2xl font-black text-white"></div>
+          <p id="modal-explanation" class="text-xs sm:text-sm text-amber-100/85 mt-1.5"></p>
+        </div>
+
+        <div class="flex justify-center">
+          <button id="btn-reveal-answer" type="button" class="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm sm:text-base shadow-md transition">
+            Reveal Answer
+          </button>
+        </div>
+      </div>
+
+      <!-- Host Scoring Footer -->
+      <div class="px-4 sm:px-6 py-3.5 bg-slate-950/90 border-t border-slate-800 flex flex-col gap-2">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 text-center">
+          Host Controls — Award or Deduct Points &amp; Complete Clue
+        </div>
+        <div id="modal-scoring-buttons" class="flex flex-wrap items-center justify-center gap-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teams & Settings Modal -->
+  <div id="teams-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-backdrop" role="dialog" aria-modal="true" aria-label="Manage Teams">
+    <div class="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl overflow-hidden">
+      <div class="px-5 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+        <h2 class="text-base font-extrabold text-amber-300">👥 Family Teams &amp; Setup</h2>
+        <button id="btn-close-teams" type="button" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+      </div>
+      <div class="p-5 flex flex-col gap-4">
+        <p class="text-xs text-slate-300">
+          Customize up to 4 teams (e.g., Kids vs. Grown-Ups, or by table). Click any team card on the scoreboard to set whose turn it is.
+        </p>
+        <div id="teams-editor-list" class="flex flex-col gap-2.5"></div>
+        <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+          <button id="btn-add-team" type="button" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-800 hover:bg-blue-700 text-white transition disabled:opacity-40">
+            + Add Team
+          </button>
+          <button id="btn-save-teams" type="button" class="px-4 py-2 rounded-lg text-xs font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 transition">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Final Question Modal -->
+  <div id="final-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-3 sm:p-6 modal-backdrop" role="dialog" aria-modal="true" aria-label="Final Question">
+    <div class="w-full max-w-2xl rounded-2xl bg-slate-900 border-2 border-amber-400/70 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-5 py-3.5 bg-gradient-to-r from-amber-900/70 via-amber-800/50 to-amber-900/70 border-b border-amber-500/40 flex items-center justify-between">
+        <h2 class="text-base sm:text-lg font-black text-amber-300">🏆 Final 5th-Grader Question</h2>
+        <button id="btn-close-final" type="button" class="text-slate-300 hover:text-white text-xl leading-none">&times;</button>
+      </div>
+      <div class="p-5 sm:p-6 overflow-y-auto flex flex-col gap-5" id="final-content"></div>
+    </div>
+  </div>
+
+  <!-- Reset Confirmation Modal -->
+  <div id="reset-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-backdrop" role="dialog" aria-modal="true" aria-label="Confirm New Game">
+    <div class="w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-700 p-5 shadow-2xl text-center flex flex-col gap-4">
+      <div class="text-3xl">🦃</div>
+      <h2 class="text-lg font-extrabold text-white">Start a Fresh Game?</h2>
+      <p class="text-xs text-slate-300">This will reset all 30 tiles, team scores, and lifelines, and shuffle new Daily Doubles.</p>
+      <div class="flex items-center justify-center gap-2.5">
+        <button id="btn-cancel-reset" type="button" class="px-4 py-2 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200">Cancel</button>
+        <button id="btn-confirm-reset" type="button" class="px-4 py-2 rounded-lg text-xs font-extrabold bg-rose-600 hover:bg-rose-500 text-white">Reset Game</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phone Buzzers Host Modal -->
+  <div id="phone-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-backdrop" role="dialog" aria-modal="true" aria-label="Phone Buzzers Setup">
+    <div class="w-full max-w-2xl rounded-2xl bg-slate-900 border border-indigo-500/50 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-5 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <h2 class="text-base font-extrabold text-amber-300">📱 Phone Buzzers (QR Code)</h2>
+          <p class="text-[11px] text-slate-400" id="phone-host-status">Starting wireless buzzer room...</p>
+        </div>
+        <button id="btn-close-phone" type="button" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+      </div>
+      <div class="p-5 overflow-y-auto flex flex-col gap-4">
+        <p class="text-xs text-slate-300">
+          Once this page is hosted on GitHub Pages (<code class="text-amber-300">https://...</code>), have one person from each team scan their QR code below with their phone camera to turn their phone into a live buzzer.
+        </p>
+        <div id="phone-qr-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Phone Buzzer Client View (shown when opened with #buzz=...) -->
+  <div id="phone-client-view" class="fixed inset-0 z-50 hidden flex-col items-center justify-between p-6 bg-slate-950 text-center">
+    <div class="w-full max-w-sm flex flex-col items-center gap-1 pt-2">
+      <div class="text-xs font-bold uppercase tracking-widest text-amber-300">Thanksgiving Won Family Jeopardy</div>
+      <h2 id="client-team-name" class="text-3xl font-black text-white mt-1">Team</h2>
+      <div id="client-conn-badge" class="mt-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+        🟡 Connecting to host...
+      </div>
+    </div>
+
+    <div class="w-full max-w-sm flex-1 flex flex-col items-center justify-center my-6">
+      <button id="btn-client-buzz" type="button" disabled class="w-64 h-64 rounded-full border-8 border-slate-700 bg-slate-800 text-slate-400 font-black text-2xl shadow-2xl transition transform active:scale-95 flex flex-col items-center justify-center gap-2 select-none">
+        <span class="text-5xl">🔔</span>
+        <span id="client-buzz-label">WAITING...</span>
+      </button>
+      <p id="client-status-msg" class="mt-5 text-sm font-semibold text-slate-300 max-w-xs">
+        Waiting for the host to open a clue.
+      </p>
+    </div>
+
+    <div class="text-[11px] text-slate-500 pb-2">
+      Keep this screen awake while playing
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const CATEGORIES = [
+        {
+          id: "math",
+          title: "5th Grade Math",
+          icon: "➗",
+          clues: [
+            {
+              value: 100,
+              q: "What is 2/3 + 1/6 in simplest form?",
+              a: "5/6",
+              exp: "Convert 2/3 to an equivalent fraction with denominator 6 (4/6), then add 4/6 + 1/6 = 5/6.",
+              hint: "Find a common denominator first—both 3 and 6 divide into 6.",
+              kid: "Maya (5th Grade): \"2/3 is the same as 4/6, and 4/6 + 1/6 equals 5/6!\""
+            },
+            {
+              value: 200,
+              q: "Using order of operations (PEMDAS), what is 2 × (5 + 3) - 4?",
+              a: "12",
+              exp: "Parentheses first: 5 + 3 = 8. Multiply: 2 × 8 = 16. Subtract: 16 - 4 = 12.",
+              hint: "Solve inside the parentheses first, then multiply by 2, then subtract 4.",
+              kid: "Maya (5th Grade): \"5 plus 3 is 8, times 2 is 16, minus 4 equals 12!\""
+            },
+            {
+              value: 300,
+              q: "A rectangular prism is 5 cm long, 4 cm wide, and 3 cm tall. What is its volume?",
+              a: "60 cubic cm (60 cm³)",
+              exp: "Volume = length × width × height = 5 × 4 × 3 = 60 cubic centimeters.",
+              hint: "Multiply all three dimensions together—and don't forget cubic units!",
+              kid: "Maya (5th Grade): \"5 times 4 is 20, and 20 times 3 is 60 cubic centimeters.\""
+            },
+            {
+              value: 400,
+              q: "Which decimal is greater: 0.405 or 0.45, and by how much?",
+              a: "0.45 is greater by 0.045",
+              exp: "Line up the decimal places: 0.450 - 0.405 = 0.045.",
+              hint: "Add a zero to the end of 0.45 so both numbers have three decimal places (0.450 vs. 0.405).",
+              kid: "Maya (5th Grade): \"0.450 minus 0.405 leaves 0.045!\""
+            },
+            {
+              value: 500,
+              q: "A store discounts a $40 board game by 25%. What is the sale price before tax?",
+              a: "$30",
+              exp: "25% is 1/4 of $40, which is $10 off. $40 - $10 = $30.",
+              hint: "25% is the same as dividing by 4—subtract that discount from $40.",
+              kid: "Maya (5th Grade): \"A quarter of 40 is 10, so 40 minus 10 is $30!\""
+            }
+          ]
+        },
+        {
+          id: "science",
+          title: "Life & Earth Science",
+          icon: "🔬",
+          clues: [
+            {
+              value: 100,
+              q: "What is the green pigment inside plant chloroplasts that absorbs sunlight for photosynthesis?",
+              a: "Chlorophyll",
+              exp: "Chlorophyll absorbs red and blue wavelengths of sunlight and reflects green light.",
+              hint: "It starts with 'Chloro-'—just like chloroplast!",
+              kid: "Leo (5th Grade): \"Chlorophyll! That's why leaves look green.\""
+            },
+            {
+              value: 200,
+              q: "Which layer of Earth sits directly beneath the crust and makes up most of Earth's volume?",
+              a: "The mantle",
+              exp: "Between Earth's thin outer crust and liquid outer core lies the thick, hot mantle.",
+              hint: "It sits between the crust and the outer core.",
+              kid: "Leo (5th Grade): \"Crust, mantle, outer core, inner core—so it's the mantle!\""
+            },
+            {
+              value: 300,
+              q: "In a food web, what do we call organisms like fungi and earthworms that break down dead plants and animals?",
+              a: "Decomposers",
+              exp: "Decomposers break down dead matter and return vital nutrients to the soil for producers.",
+              hint: "They 'decompose' dead material back into rich soil.",
+              kid: "Leo (5th Grade): \"Producers, consumers, and decomposers!\""
+            },
+            {
+              value: 400,
+              q: "Which gas makes up about 78% of Earth's atmosphere—more than oxygen?",
+              a: "Nitrogen",
+              exp: "Earth's air is roughly 78% nitrogen, 21% oxygen, and 1% other gases like argon and carbon dioxide.",
+              hint: "It starts with 'N'—oxygen is actually only about 21% of the air!",
+              kid: "Leo (5th Grade): \"People always guess oxygen, but it's actually nitrogen!\""
+            },
+            {
+              value: 500,
+              q: "Which blood vessels carry oxygen-rich blood AWAY from the heart to the rest of the body?",
+              a: "Arteries",
+              exp: "Arteries carry blood away from the heart under high pressure, while veins return blood to the heart.",
+              hint: "Remember 'A' for Away!",
+              kid: "Leo (5th Grade): \"A for Away = Arteries!\""
+            }
+          ]
+        },
+        {
+          id: "history",
+          title: "U.S. History",
+          icon: "🗽",
+          clues: [
+            {
+              value: 100,
+              q: "What 1773 protest in Massachusetts saw colonists dump 342 chests of British tea into the harbor?",
+              a: "The Boston Tea Party",
+              exp: "Organized by the Sons of Liberty to protest British taxes without representation.",
+              hint: "It happened in Boston Harbor and wasn't a real party!",
+              kid: "Sam (5th Grade): \"The Boston Tea Party!\""
+            },
+            {
+              value: 200,
+              q: "Which famous U.S. document begins with the words 'We the People'?",
+              a: "The U.S. Constitution",
+              exp: "Written in 1787, the Preamble to the Constitution opens with 'We the People of the United States...'",
+              hint: "It's the supreme law of the United States, written in 1787.",
+              kid: "Sam (5th Grade): \"The Constitution! We had to memorize the Preamble in class.\""
+            },
+            {
+              value: 300,
+              q: "Which Shoshone woman served as a vital guide and interpreter for the Lewis and Clark expedition?",
+              a: "Sacagawea",
+              exp: "She traveled thousands of miles with her infant son, helping negotiate with Indigenous tribes.",
+              hint: "She's even featured on a golden U.S. $1 coin.",
+              kid: "Sam (5th Grade): \"Sacagawea!\""
+            },
+            {
+              value: 400,
+              q: "What 1803 land deal with France doubled the size of the United States?",
+              a: "The Louisiana Purchase",
+              exp: "The U.S. bought roughly 828,000 square miles for $15 million, later explored by Lewis and Clark.",
+              hint: "Named after a huge territory stretching from New Orleans up to Montana.",
+              kid: "Sam (5th Grade): \"The Louisiana Purchase!\""
+            },
+            {
+              value: 500,
+              q: "What are the first 10 amendments to the U.S. Constitution called?",
+              a: "The Bill of Rights",
+              exp: "Ratified in 1791, they protect fundamental freedoms like speech, religion, and trial by jury.",
+              hint: "It's a 'Bill' that lists citizens' core rights.",
+              kid: "Sam (5th Grade): \"The Bill of Rights!\""
+            }
+          ]
+        },
+        {
+          id: "geography",
+          title: "World Geography",
+          icon: "🌎",
+          clues: [
+            {
+              value: 100,
+              q: "Which two continents lie entirely in the Western Hemisphere?",
+              a: "North America and South America",
+              exp: "Parts of Europe, Africa, and Antarctica cross into the Western Hemisphere, but only the Americas lie completely inside it.",
+              hint: "Think of the two continents on our side of the Atlantic Ocean.",
+              kid: "Zoe (5th Grade): \"North America and South America!\""
+            },
+            {
+              value: 200,
+              q: "What is the longest mountain range in South America, running along its western coast?",
+              a: "The Andes",
+              exp: "Stretching roughly 4,300 miles across seven countries, the Andes are the longest continental mountain range on Earth.",
+              hint: "Starts with 'A'—it runs down Peru and Chile.",
+              kid: "Zoe (5th Grade): \"The Andes Mountains!\""
+            },
+            {
+              value: 300,
+              q: "Which U.S. state has the longest coastline—longer than all other 49 states combined?",
+              a: "Alaska",
+              exp: "With its vast islands, bays, and fjords, Alaska's coastline is over 6,600 miles (and 33,900+ miles of tidal shoreline).",
+              hint: "It's by far the largest U.S. state by area and has thousands of islands.",
+              kid: "Zoe (5th Grade): \"Alaska! People guess California or Florida, but Alaska is huge.\""
+            },
+            {
+              value: 400,
+              q: "What imaginary line at 0° longitude runs through Greenwich, England, and divides the Eastern and Western Hemispheres?",
+              a: "The Prime Meridian",
+              exp: "The Prime Meridian is the starting point for measuring longitude east and west, as well as world time zones.",
+              hint: "The Equator is 0° latitude; this 'Meridian' is 0° longitude.",
+              kid: "Zoe (5th Grade): \"The Prime Meridian!\""
+            },
+            {
+              value: 500,
+              q: "Name all five Great Lakes of North America.",
+              a: "Superior, Michigan, Huron, Erie, and Ontario",
+              exp: "Together they hold about 21% of the world's surface fresh water.",
+              hint: "Use the acronym HOMES!",
+              kid: "Zoe (5th Grade): \"H-O-M-E-S: Huron, Ontario, Michigan, Erie, Superior!\""
+            }
+          ]
+        },
+        {
+          id: "english",
+          title: "English & Grammar",
+          icon: "📖",
+          clues: [
+            {
+              value: 100,
+              q: "In 'The golden turkey smelled delicious,' what part of speech is the word 'delicious'?",
+              a: "Adjective",
+              exp: "Adjectives describe nouns—here, 'delicious' describes the turkey.",
+              hint: "It's a describing word for a noun (the turkey).",
+              kid: "Mia (5th Grade): \"It describes the turkey, so it's an adjective!\""
+            },
+            {
+              value: 200,
+              q: "What type of figurative language is 'The autumn wind whispered through the trees'?",
+              a: "Personification",
+              exp: "Personification gives human qualities or actions (like whispering) to non-human things.",
+              hint: "It treats the wind as if it were a person.",
+              kid: "Mia (5th Grade): \"Wind can't really whisper—that's personification!\""
+            },
+            {
+              value: 300,
+              q: "What does the Latin root 'scrib-' or 'script-' mean, as in 'describe,' 'manuscript,' or 'prescription'?",
+              a: "To write",
+              exp: "From the Latin 'scribere,' meaning to write (a manuscript was originally written by hand).",
+              hint: "Think about what a 'script' or 'scribble' involves.",
+              kid: "Mia (5th Grade): \"It means to write!\""
+            },
+            {
+              value: 400,
+              q: "What do we call two words that sound the same but have different spellings and meanings, like 'flour' and 'flower'?",
+              a: "Homophones",
+              exp: "'Homo-' means same and 'phone' means sound—words that sound alike but mean different things.",
+              hint: "Think 'same sound'—like 'phone' for sound!",
+              kid: "Mia (5th Grade): \"Homophones! Like 'ate' and 'eight.'\""
+            },
+            {
+              value: 500,
+              q: "How do you spell the homophone of 'stationary' (not moving) that means writing paper and envelopes?",
+              a: "Stationery (with an 'e')",
+              exp: "Trick to remember: 'E' for Envelopes in stationEry; 'A' for At rest in stationAry.",
+              hint: "Only one letter changes—think 'E' for Envelope!",
+              kid: "Mia (5th Grade): \"S-T-A-T-I-O-N-E-R-Y—E for envelopes!\""
+            }
+          ]
+        },
+        {
+          id: "genalpha",
+          title: "No Cap Vocab",
+          icon: "🗣️",
+          clues: [
+            {
+              value: 100,
+              q: "Guess the slang word: Short for 'delusional'—used playfully when someone has wildly unrealistic hopes or expectations.",
+              a: "Delulu",
+              exp: "Example: 'Am I delulu for thinking there will be leftover pie tomorrow?'",
+              hint: "It starts with 'Del-' and repeats the 'lu' sound!",
+              kid: "Noah (5th Grade): \"Delulu! As in, 'You're delulu if you think you're beating me at this game.'\""
+            },
+            {
+              value: 200,
+              q: "Guess the slang word: Means 'doomed,' 'done for,' or in big trouble (as in, 'I forgot my homework—I'm _____').",
+              a: "Cooked",
+              exp: "Used when someone is completely overwhelmed, defeated, or out of luck.",
+              hint: "Think of what happens to a Thanksgiving turkey in the oven!",
+              kid: "Noah (5th Grade): \"We're cooked! Every kid at school says this.\""
+            },
+            {
+              value: 300,
+              q: "Guess the 2-word slang phrase: To suddenly lose your cool, freak out, or have a dramatic meltdown.",
+              a: "Crash out",
+              exp: "Used playfully or dramatically when someone completely snaps over something—like losing a game.",
+              hint: "First word is what a car or computer does when it breaks down; second word is 'out.'",
+              kid: "Noah (5th Grade): \"Crash out! Like when someone loses in Mario Kart and throws the controller.\""
+            },
+            {
+              value: 400,
+              q: "Guess the trending 2026 slang suffix: Attached to words like 'sleep_____' or 'protein_____' to mean obsessively optimizing something.",
+              a: "-maxxing (Maxxing)",
+              exp: "Originally from 'looksmaxxing,' '-maxxing' exploded in 2026 to describe going all-in on any habit or trend.",
+              hint: "Think of 'maximizing' something to the extreme!",
+              kid: "Noah (5th Grade): \"Maxxing! Like fibermaxxing or sleepmaxxing.\""
+            },
+            {
+              value: 500,
+              q: "Guess the 3-letter slang word: Jokingly used to call someone old, out-of-touch, or acting way past their prime.",
+              a: "Unc",
+              exp: "Short for 'uncle,' kids use it affectionately (or teasingly) whenever an older relative tries to act hip.",
+              hint: "It's the first three letters of a male relative's title!",
+              kid: "Noah (5th Grade): \"Unc! Short for uncle—don't get mad if the kids call you unc at dinner.\""
+            }
+          ]
+        }
+      ];
+
+      const FINAL_QUESTION = {
+        category: "5th Grade U.S. History",
+        question: "In what city and state was the Declaration of Independence signed in 1776?",
+        answer: "Philadelphia, Pennsylvania",
+        explanation: "The Second Continental Congress met at Independence Hall in Philadelphia, where the Declaration was adopted on July 4, 1776."
+      };
+
+      const TEAM_COLORS = [
+        { bg: "from-amber-500/20 to-amber-900/20", border: "border-amber-400", badge: "bg-amber-400 text-slate-950" },
+        { bg: "from-emerald-500/20 to-emerald-900/20", border: "border-emerald-400", badge: "bg-emerald-400 text-slate-950" },
+        { bg: "from-sky-500/20 to-sky-900/20", border: "border-sky-400", badge: "bg-sky-400 text-slate-950" },
+        { bg: "from-rose-500/20 to-rose-900/20", border: "border-rose-400", badge: "bg-rose-400 text-slate-950" }
+      ];
+
+      // Web Audio synthesized sound effects
+      let audioCtx = null;
+      let soundEnabled = true;
+
+      function getAudio() {
+        if (!soundEnabled) return null;
+        if (!audioCtx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) audioCtx = new AC();
+        }
+        if (audioCtx && audioCtx.state === "suspended") {
+          audioCtx.resume().catch(() => {});
+        }
+        return audioCtx;
+      }
+
+      function playTone(freq, duration, type = "sine", delay = 0, vol = 0.14) {
+        const ctx = getAudio();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+        gain.gain.setValueAtTime(0.001, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(vol, ctx.currentTime + delay + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + duration + 0.02);
+      }
+
+      function sfxSelect() { playTone(523.25, 0.12, "triangle", 0); playTone(659.25, 0.16, "triangle", 0.08); }
+      function sfxCorrect() { playTone(523.25, 0.12, "sine", 0); playTone(659.25, 0.12, "sine", 0.1); playTone(783.99, 0.28, "sine", 0.2); }
+      function sfxWrong() { playTone(220, 0.22, "sawtooth", 0, 0.1); playTone(174.61, 0.35, "sawtooth", 0.18, 0.1); }
+      function sfxDailyDouble() {
+        [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => playTone(f, 0.18, "triangle", i * 0.08, 0.16));
+      }
+      function sfxBuzzer() { playTone(150, 0.55, "sawtooth", 0, 0.14); }
+      function sfxBuzzIn(teamIdx) {
+        const base = [587.33, 659.25, 783.99, 880][teamIdx % 4];
+        playTone(base, 0.12, "triangle", 0, 0.18);
+        playTone(base * 1.25, 0.22, "triangle", 0.08, 0.16);
+      }
+
+      // Game State
+      let state = {
+        teams: [
+          { id: 1, name: "Boys", score: 0, lifelines: { peek: true, copy: true, save: true } },
+          { id: 2, name: "Girls", score: 0, lifelines: { peek: true, copy: true, save: true } }
+        ],
+        activeTeamId: 1,
+        usedClues: {}, // key: "catIdx-clueIdx" -> true
+        dailyDoubles: [], // array of 2 keys
+        activeClue: null, // { catIdx, clueIdx, value, isDailyDouble, savedThisTurn }
+        timerSeconds: 10,
+        timerRunning: false,
+        timerInterval: null,
+        finalState: {
+          step: "wager", // "wager" | "question" | "revealed"
+          wagers: {}
+        }
+      };
+
+      function pickDailyDoubles() {
+        const allKeys = [];
+        for (let c = 0; c < CATEGORIES.length; c++) {
+          for (let r = 1; r < 5; r++) { // rows 200-500
+            allKeys.push(`${c}-${r}`);
+          }
+        }
+        for (let i = allKeys.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allKeys[i], allKeys[j]] = [allKeys[j], allKeys[i]];
+        }
+        return [allKeys[0], allKeys[1]];
+      }
+
+      function saveToStorage() {
+        try {
+          const toSave = {
+            teams: state.teams,
+            activeTeamId: state.activeTeamId,
+            usedClues: state.usedClues,
+            dailyDoubles: state.dailyDoubles
+          };
+          localStorage.setItem("thanksgiving_5th_grader_jeopardy_v2", JSON.stringify(toSave));
+        } catch (e) {}
+      }
+
+      function loadFromStorage() {
+        try {
+          const raw = localStorage.getItem("thanksgiving_5th_grader_jeopardy_v2");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed.teams) && parsed.teams.length > 0) {
+              state.teams = parsed.teams;
+              state.activeTeamId = parsed.activeTeamId || parsed.teams[0].id;
+              state.usedClues = parsed.usedClues || {};
+              state.dailyDoubles = Array.isArray(parsed.dailyDoubles) && parsed.dailyDoubles.length === 2
+                ? parsed.dailyDoubles
+                : pickDailyDoubles();
+              return;
+            }
+          }
+        } catch (e) {}
+        state.dailyDoubles = pickDailyDoubles();
+      }
+
+      function getActiveTeam() {
+        return state.teams.find(t => t.id === state.activeTeamId) || state.teams[0];
+      }
+
+      function advanceTurn() {
+        const idx = state.teams.findIndex(t => t.id === state.activeTeamId);
+        const nextIdx = (idx + 1) % state.teams.length;
+        state.activeTeamId = state.teams[nextIdx].id;
+      }
+
+      function renderScoreboard() {
+        const container = document.getElementById("scoreboard");
+        container.innerHTML = "";
+        state.teams.forEach((team, idx) => {
+          const color = TEAM_COLORS[idx % TEAM_COLORS.length];
+          const isActive = team.id === state.activeTeamId;
+          const card = document.createElement("div");
+          card.className = `rounded-xl p-2.5 sm:p-3.5 bg-gradient-to-br ${color.bg} border-2 transition cursor-pointer select-none ${
+            isActive ? `${color.border} shadow-lg scale-[1.01]` : "border-slate-800 opacity-85 hover:opacity-100"
+          }`;
+          card.onclick = () => {
+            state.activeTeamId = team.id;
+            saveToStorage();
+            renderScoreboard();
+          };
+
+          const lifelinesHtml = `
+            <span class="${team.lifelines.peek ? "opacity-100" : "opacity-25 line-through"}" title="Peek">👀</span>
+            <span class="${team.lifelines.copy ? "opacity-100" : "opacity-25 line-through"}" title="Copy">📝</span>
+            <span class="${team.lifelines.save ? "opacity-100" : "opacity-25 line-through"}" title="Save">🛡️</span>
+          `;
+
+          card.innerHTML = `
+            <div class="flex items-center justify-between gap-1 mb-1">
+              <span class="text-xs sm:text-sm font-bold text-white truncate">${escapeHtml(team.name)}</span>
+              ${isActive ? `<span class="text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${color.badge}">Turn</span>` : ""}
+            </div>
+            <div class="flex items-baseline justify-between gap-2">
+              <span class="text-xl sm:text-2xl font-black ${team.score < 0 ? "text-rose-400" : "text-amber-300"}">
+                ${team.score < 0 ? "-" : ""}$${Math.abs(team.score).toLocaleString()}
+              </span>
+              <div class="flex items-center gap-1 text-xs">
+                <button type="button" data-adjust="-100" class="w-6 h-6 rounded bg-slate-900/80 hover:bg-slate-800 text-slate-300 font-bold leading-none">-</button>
+                <button type="button" data-adjust="100" class="w-6 h-6 rounded bg-slate-900/80 hover:bg-slate-800 text-slate-300 font-bold leading-none">+</button>
+              </div>
+            </div>
+            <div class="mt-1.5 flex items-center justify-between text-[11px] text-slate-300">
+              <span>Lifelines: ${lifelinesHtml}</span>
+            </div>
+          `;
+
+          card.querySelectorAll("button[data-adjust]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              const delta = parseInt(btn.getAttribute("data-adjust"), 10);
+              team.score += delta;
+              saveToStorage();
+              renderScoreboard();
+            });
+          });
+
+          container.appendChild(card);
+        });
+      }
+
+      function renderBoard() {
+        const grid = document.getElementById("board-grid");
+        grid.innerHTML = "";
+
+        // Category headers
+        CATEGORIES.forEach(cat => {
+          const head = document.createElement("div");
+          head.className = "category-header rounded-xl p-2 sm:p-3 text-center flex flex-col items-center justify-center min-h-[68px] sm:min-h-[80px]";
+          head.innerHTML = `
+            <span class="text-lg sm:text-xl mb-0.5" aria-hidden="true">${cat.icon}</span>
+            <span class="text-[11px] sm:text-xs font-extrabold uppercase tracking-wide text-white leading-tight">${escapeHtml(cat.title)}</span>
+          `;
+          grid.appendChild(head);
+        });
+
+        // Clue rows (5 rows x 6 cols)
+        for (let r = 0; r < 5; r++) {
+          for (let c = 0; c < CATEGORIES.length; c++) {
+            const key = `${c}-${r}`;
+            const clue = CATEGORIES[c].clues[r];
+            const used = Boolean(state.usedClues[key]);
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.disabled = used;
+            btn.className = "jeopardy-tile rounded-xl py-4 sm:py-6 flex items-center justify-center";
+            btn.innerHTML = used
+              ? `<span class="text-xs font-semibold text-blue-500/40">&mdash;</span>`
+              : `<span class="text-xl sm:text-3xl font-black gold-text">$${clue.value}</span>`;
+            btn.addEventListener("click", () => openClue(c, r));
+            grid.appendChild(btn);
+          }
+        }
+
+        const total = CATEGORIES.length * 5;
+        const usedCount = Object.keys(state.usedClues).length;
+        const remaining = total - usedCount;
+        document.getElementById("clues-remaining-label").textContent =
+          remaining === 0 ? "Board cleared! Ready for Final Question" : `${remaining} clue${remaining === 1 ? "" : "s"} left`;
+      }
+
+      function stopTimer() {
+        if (state.timerInterval) {
+          clearInterval(state.timerInterval);
+          state.timerInterval = null;
+        }
+        state.timerRunning = false;
+        document.getElementById("btn-timer-toggle").textContent = "Start";
+      }
+
+      function updateTimerDisplay() {
+        const s = state.timerSeconds;
+        const el = document.getElementById("timer-display");
+        el.textContent = `0:${s < 10 ? "0" : ""}${s}`;
+        el.className = `text-xs font-mono font-bold ${s <= 5 ? "text-rose-400" : "text-white"}`;
+      }
+
+      function toggleTimer() {
+        if (state.timerRunning) {
+          stopTimer();
+          return;
+        }
+        if (state.timerSeconds <= 0) state.timerSeconds = 10;
+        state.timerRunning = true;
+        document.getElementById("btn-timer-toggle").textContent = "Pause";
+        state.timerInterval = setInterval(() => {
+          state.timerSeconds -= 1;
+          updateTimerDisplay();
+          if (state.timerSeconds <= 0) {
+            stopTimer();
+            sfxBuzzer();
+          }
+        }, 1000);
+      }
+
+      function openClue(catIdx, clueIdx) {
+        const key = `${catIdx}-${clueIdx}`;
+        if (state.usedClues[key]) return;
+        const cat = CATEGORIES[catIdx];
+        const clue = cat.clues[clueIdx];
+        const isDD = state.dailyDoubles.includes(key);
+        const activeTeam = getActiveTeam();
+
+        state.activeClue = {
+          catIdx,
+          clueIdx,
+          key,
+          value: clue.value,
+          isDailyDouble: isDD,
+          savedThisTurn: false,
+          buzzedTeamId: isDD ? activeTeam.id : null,
+          lockedOutTeamIds: []
+        };
+
+        stopTimer();
+        state.timerSeconds = 10;
+        updateTimerDisplay();
+
+        document.getElementById("modal-category").textContent = `${cat.icon} ${cat.title}`;
+        document.getElementById("modal-value").textContent = `$${clue.value}`;
+        document.getElementById("modal-question").textContent = clue.q;
+        document.getElementById("modal-answer").textContent = clue.a;
+        document.getElementById("modal-explanation").textContent = clue.exp;
+
+        document.getElementById("answer-box").classList.add("hidden");
+        document.getElementById("btn-reveal-answer").classList.remove("hidden");
+        document.getElementById("lifeline-output").classList.add("hidden");
+        document.getElementById("lifeline-output").textContent = "";
+
+        const ddBadge = document.getElementById("modal-daily-double-badge");
+        const ddGate = document.getElementById("daily-double-gate");
+        const clueBody = document.getElementById("clue-body");
+
+        if (isDD) {
+          sfxDailyDouble();
+          ddBadge.classList.remove("hidden");
+          ddGate.classList.remove("hidden");
+          ddGate.classList.add("flex");
+          clueBody.classList.add("hidden");
+
+          const maxWager = Math.max(500, activeTeam.score);
+          const wagerInput = document.getElementById("dd-wager-input");
+          wagerInput.max = maxWager;
+          wagerInput.value = Math.min(clue.value, maxWager);
+          document.getElementById("dd-team-name").textContent = activeTeam.name;
+          document.getElementById("dd-max-note").textContent = `(Max $${maxWager.toLocaleString()})`;
+        } else {
+          sfxSelect();
+          ddBadge.classList.add("hidden");
+          ddGate.classList.add("hidden");
+          ddGate.classList.remove("flex");
+          clueBody.classList.remove("hidden");
+        }
+
+        renderBuzzerSection();
+        renderLifelineButtons();
+        renderModalScoringButtons();
+        broadcastPhoneState();
+
+        const modal = document.getElementById("clue-modal");
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      }
+
+      const BUZZER_STYLES = [
+        "bg-amber-600 hover:bg-amber-500 border-amber-400 text-slate-950",
+        "bg-emerald-600 hover:bg-emerald-500 border-emerald-400 text-slate-950",
+        "bg-sky-600 hover:bg-sky-500 border-sky-400 text-slate-950",
+        "bg-rose-600 hover:bg-rose-500 border-rose-400 text-white"
+      ];
+
+      function renderBuzzerSection() {
+        if (!state.activeClue) return;
+        const wrap = document.getElementById("buzzer-buttons");
+        const statusEl = document.getElementById("buzzer-status");
+        const { buzzedTeamId, lockedOutTeamIds, isDailyDouble } = state.activeClue;
+        wrap.innerHTML = "";
+
+        if (isDailyDouble) {
+          const ddTeam = getActiveTeam();
+          statusEl.textContent = `⚡ Double Credit — ${ddTeam.name} answers this clue`;
+          statusEl.className = "text-xs sm:text-sm font-bold text-amber-300";
+        } else if (buzzedTeamId !== null) {
+          const winner = state.teams.find(t => t.id === buzzedTeamId);
+          statusEl.textContent = `🔔 ${winner ? winner.name : "Team"} buzzed in first!`;
+          statusEl.className = "text-xs sm:text-sm font-black text-emerald-300";
+        } else {
+          statusEl.textContent = `🔔 Buzzer Live — Press key 1–${state.teams.length} or tap your team!`;
+          statusEl.className = "text-xs sm:text-sm font-bold text-amber-300";
+        }
+
+        state.teams.forEach((team, idx) => {
+          const isWinner = buzzedTeamId === team.id;
+          const isLockedOut = lockedOutTeamIds.includes(team.id);
+          const disabled = isDailyDouble || (buzzedTeamId !== null && !isWinner) || isLockedOut;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.disabled = disabled;
+          btn.className = `px-3 py-2.5 rounded-xl border-2 font-extrabold text-xs sm:text-sm transition flex items-center justify-between gap-2 ${
+            isWinner
+              ? `${BUZZER_STYLES[idx % BUZZER_STYLES.length]} ring-2 ring-white scale-[1.02] shadow-lg`
+              : disabled
+                ? "bg-slate-900/60 border-slate-800 text-slate-500 opacity-45 cursor-not-allowed"
+                : `${BUZZER_STYLES[idx % BUZZER_STYLES.length]} shadow-sm active:scale-95`
+          }`;
+          btn.innerHTML = `
+            <span class="truncate">${escapeHtml(team.name)}</span>
+            <span class="px-1.5 py-0.5 rounded bg-black/25 text-[10px] font-black shrink-0">${idx + 1}</span>
+          `;
+          btn.addEventListener("click", () => triggerBuzz(team.id));
+          wrap.appendChild(btn);
+        });
+      }
+
+      function triggerBuzz(teamId) {
+        if (!state.activeClue) return;
+        if (state.activeClue.isDailyDouble) return;
+        if (state.activeClue.buzzedTeamId !== null) return;
+        if (state.activeClue.lockedOutTeamIds.includes(teamId)) return;
+
+        const idx = state.teams.findIndex(t => t.id === teamId);
+        if (idx === -1) return;
+
+        state.activeClue.buzzedTeamId = teamId;
+        state.activeTeamId = teamId;
+        sfxBuzzIn(idx);
+        saveToStorage();
+        renderScoreboard();
+        renderBuzzerSection();
+        renderLifelineButtons();
+        broadcastPhoneState();
+      }
+
+      function renderLifelineButtons() {
+        const team = getActiveTeam();
+        document.getElementById("lifeline-active-team").textContent = team.name;
+        document.getElementById("btn-lifeline-peek").disabled = !team.lifelines.peek;
+        document.getElementById("btn-lifeline-copy").disabled = !team.lifelines.copy;
+        document.getElementById("btn-lifeline-save").disabled = !team.lifelines.save || state.activeClue.savedThisTurn;
+      }
+
+      function useLifeline(type) {
+        if (!state.activeClue) return;
+        const team = getActiveTeam();
+        const clue = CATEGORIES[state.activeClue.catIdx].clues[state.activeClue.clueIdx];
+        const out = document.getElementById("lifeline-output");
+        out.classList.remove("hidden");
+
+        if (type === "peek" && team.lifelines.peek) {
+          team.lifelines.peek = false;
+          out.innerHTML = `<strong class="text-emerald-300">👀 Peek Hint:</strong> ${escapeHtml(clue.hint)}`;
+        } else if (type === "copy" && team.lifelines.copy) {
+          team.lifelines.copy = false;
+          out.innerHTML = `<strong class="text-indigo-300">📝 Classmate's Paper:</strong> ${escapeHtml(clue.kid)}`;
+        } else if (type === "save" && team.lifelines.save) {
+          team.lifelines.save = false;
+          state.activeClue.savedThisTurn = true;
+          out.innerHTML = `<strong class="text-amber-300">🛡️ Saved!</strong> ${escapeHtml(team.name)} is protected from losing points on this question.`;
+        }
+        sfxSelect();
+        saveToStorage();
+        renderScoreboard();
+        renderLifelineButtons();
+      }
+
+      function renderModalScoringButtons() {
+        const wrap = document.getElementById("modal-scoring-buttons");
+        wrap.innerHTML = "";
+        const val = state.activeClue ? state.activeClue.value : 100;
+
+        state.teams.forEach((team, idx) => {
+          const group = document.createElement("div");
+          group.className = "flex items-center rounded-lg overflow-hidden border border-slate-700 bg-slate-900";
+
+          const plusBtn = document.createElement("button");
+          plusBtn.type = "button";
+          plusBtn.className = "px-2.5 py-1.5 text-xs font-bold bg-emerald-700 hover:bg-emerald-600 text-white transition";
+          plusBtn.textContent = `+ $${val} ${team.name.split(" ")[0]}`;
+          plusBtn.addEventListener("click", () => resolveClue(team.id, true));
+
+          const minusBtn = document.createElement("button");
+          minusBtn.type = "button";
+          minusBtn.className = "px-2 py-1.5 text-xs font-bold bg-rose-900/80 hover:bg-rose-800 text-rose-200 border-l border-slate-700 transition";
+          minusBtn.textContent = `- $${val}`;
+          minusBtn.addEventListener("click", () => resolveClue(team.id, false));
+
+          group.appendChild(plusBtn);
+          group.appendChild(minusBtn);
+          wrap.appendChild(group);
+        });
+
+        const skipBtn = document.createElement("button");
+        skipBtn.type = "button";
+        skipBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition";
+        skipBtn.textContent = "No One / Close Clue";
+        skipBtn.addEventListener("click", () => resolveClue(null, null));
+        wrap.appendChild(skipBtn);
+      }
+
+      function resolveClue(teamId, isCorrect) {
+        if (!state.activeClue) return;
+        const val = state.activeClue.value;
+
+        if (teamId !== null) {
+          const team = state.teams.find(t => t.id === teamId);
+          if (team) {
+            if (isCorrect) {
+              team.score += val;
+              sfxCorrect();
+              state.usedClues[state.activeClue.key] = true;
+              state.activeTeamId = team.id;
+              closeClueModal();
+            } else {
+              if (!state.activeClue.savedThisTurn) {
+                team.score -= val;
+              }
+              sfxWrong();
+              if (!state.activeClue.lockedOutTeamIds.includes(teamId)) {
+                state.activeClue.lockedOutTeamIds.push(teamId);
+              }
+              state.activeClue.buzzedTeamId = null;
+              saveToStorage();
+              renderScoreboard();
+              renderBuzzerSection();
+              broadcastPhoneState();
+              return; // Keep clue open so another team can steal!
+            }
+          }
+        } else {
+          state.usedClues[state.activeClue.key] = true;
+          closeClueModal();
+        }
+
+        saveToStorage();
+        renderScoreboard();
+        renderBoard();
+      }
+
+      function closeClueModal() {
+        stopTimer();
+        state.activeClue = null;
+        const modal = document.getElementById("clue-modal");
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+        broadcastPhoneState();
+      }
+
+      // Teams Editor Modal
+      function openTeamsModal() {
+        renderTeamsEditor();
+        const modal = document.getElementById("teams-modal");
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      }
+
+      function renderTeamsEditor() {
+        const list = document.getElementById("teams-editor-list");
+        list.innerHTML = "";
+        state.teams.forEach((team, idx) => {
+          const row = document.createElement("div");
+          row.className = "flex items-center gap-2";
+          row.innerHTML = `
+            <span class="text-xs font-bold text-slate-400 w-14">Team ${idx + 1}</span>
+            <input type="text" value="${escapeHtml(team.name)}" maxlength="28" class="flex-1 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm text-white font-semibold focus:outline-none focus:border-amber-400" />
+            <button type="button" class="px-2.5 py-2 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-200 text-xs font-bold disabled:opacity-30" ${state.teams.length <= 1 ? "disabled" : ""}>✕</button>
+          `;
+          const input = row.querySelector("input");
+          input.addEventListener("input", () => {
+            team.name = input.value || `Team ${idx + 1}`;
+          });
+          row.querySelector("button").addEventListener("click", () => {
+            if (state.teams.length > 1) {
+              state.teams = state.teams.filter(t => t.id !== team.id);
+              if (!state.teams.some(t => t.id === state.activeTeamId)) {
+                state.activeTeamId = state.teams[0].id;
+              }
+              renderTeamsEditor();
+            }
+          });
+          list.appendChild(row);
+        });
+        document.getElementById("btn-add-team").disabled = state.teams.length >= 4;
+      }
+
+      // Final Question Modal
+      function openFinalModal() {
+        state.finalState = { step: "wager", wagers: {} };
+        state.teams.forEach(t => {
+          state.finalState.wagers[t.id] = Math.max(0, Math.min(500, t.score > 0 ? t.score : 500));
+        });
+        renderFinalContent();
+        const modal = document.getElementById("final-modal");
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      }
+
+      function renderFinalContent() {
+        const wrap = document.getElementById("final-content");
+        const step = state.finalState.step;
+
+        if (step === "wager") {
+          wrap.innerHTML = `
+            <div class="text-center">
+              <div class="text-xs font-bold uppercase tracking-widest text-amber-300">Final Category</div>
+              <div class="text-xl font-black text-white mt-1">${escapeHtml(FINAL_QUESTION.category)}</div>
+              <p class="text-xs text-slate-300 mt-1">Each team enters their wager before seeing the Final Question.</p>
+            </div>
+            <div class="flex flex-col gap-2.5" id="final-wagers-list"></div>
+            <button id="btn-final-show-q" type="button" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm sm:text-base transition">
+              Reveal Final Question
+            </button>
+          `;
+          const list = wrap.querySelector("#final-wagers-list");
+          state.teams.forEach(t => {
+            const maxW = Math.max(500, t.score);
+            const row = document.createElement("div");
+            row.className = "flex items-center justify-between gap-3 bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5";
+            row.innerHTML = `
+              <div>
+                <div class="text-sm font-bold text-white">${escapeHtml(t.name)}</div>
+                <div class="text-xs text-slate-400">Current: $${t.score.toLocaleString()} (Max wager: $${maxW.toLocaleString()})</div>
+              </div>
+              <input type="number" min="0" max="${maxW}" step="100" value="${state.finalState.wagers[t.id]}" class="w-28 px-3 py-1.5 rounded-lg bg-slate-900 border border-amber-400/50 text-white font-bold text-right" />
+            `;
+            const inp = row.querySelector("input");
+            inp.addEventListener("input", () => {
+              let v = parseInt(inp.value, 10);
+              if (isNaN(v) || v < 0) v = 0;
+              if (v > maxW) v = maxW;
+              state.finalState.wagers[t.id] = v;
+            });
+            list.appendChild(row);
+          });
+          wrap.querySelector("#btn-final-show-q").addEventListener("click", () => {
+            sfxDailyDouble();
+            state.finalState.step = "question";
+            renderFinalContent();
+          });
+        } else if (step === "question" || step === "revealed") {
+          wrap.innerHTML = `
+            <div class="chalk-card rounded-xl p-5 sm:p-6 text-center">
+              <div class="text-xs font-bold uppercase tracking-widest text-amber-300 mb-2">${escapeHtml(FINAL_QUESTION.category)}</div>
+              <p class="text-lg sm:text-xl font-bold text-white leading-snug">${escapeHtml(FINAL_QUESTION.question)}</p>
+            </div>
+            ${step === "revealed" ? `
+              <div class="rounded-xl bg-amber-500/10 border-2 border-amber-400 p-4 text-center">
+                <div class="text-xs font-extrabold uppercase tracking-widest text-amber-300">Answer</div>
+                <div class="text-xl font-black text-white mt-1">${escapeHtml(FINAL_QUESTION.answer)}</div>
+                <p class="text-xs text-amber-100/80 mt-1">${escapeHtml(FINAL_QUESTION.explanation)}</p>
+              </div>
+              <div class="flex flex-col gap-2" id="final-judge-list"></div>
+              <button id="btn-final-finish" type="button" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm sm:text-base transition">
+                🎉 Crown Thanksgiving Champion!
+              </button>
+            ` : `
+              <button id="btn-final-reveal" type="button" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm sm:text-base transition">
+                Reveal Final Answer
+              </button>
+            `}
+          `;
+
+          if (step === "question") {
+            wrap.querySelector("#btn-final-reveal").addEventListener("click", () => {
+              sfxSelect();
+              state.finalState.step = "revealed";
+              renderFinalContent();
+            });
+          } else {
+            const judgeList = wrap.querySelector("#final-judge-list");
+            state.teams.forEach(t => {
+              const wager = state.finalState.wagers[t.id] || 0;
+              const row = document.createElement("div");
+              row.className = "flex items-center justify-between gap-2 bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5";
+              row.innerHTML = `
+                <div>
+                  <div class="text-sm font-bold text-white">${escapeHtml(t.name)}</div>
+                  <div class="text-xs text-slate-400">Wager: $${wager.toLocaleString()}</div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <button type="button" data-res="win" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-700 hover:bg-emerald-600 text-white">+ $${wager}</button>
+                  <button type="button" data-res="lose" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-800 hover:bg-rose-700 text-white">- $${wager}</button>
+                </div>
+              `;
+              row.querySelector('[data-res="win"]').addEventListener("click", (e) => {
+                t.score += wager;
+                sfxCorrect();
+                e.currentTarget.parentElement.innerHTML = `<span class="text-xs font-bold text-emerald-300">Scored +$${wager}</span>`;
+                saveToStorage();
+                renderScoreboard();
+              });
+              row.querySelector('[data-res="lose"]').addEventListener("click", (e) => {
+                t.score -= wager;
+                sfxWrong();
+                e.currentTarget.parentElement.innerHTML = `<span class="text-xs font-bold text-rose-300">Missed -$${wager}</span>`;
+                saveToStorage();
+                renderScoreboard();
+              });
+              judgeList.appendChild(row);
+            });
+
+            wrap.querySelector("#btn-final-finish").addEventListener("click", () => {
+              const sorted = [...state.teams].sort((a, b) => b.score - a.score);
+              const winner = sorted[0];
+              sfxDailyDouble();
+              if (typeof confetti === "function") {
+                confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+              }
+              wrap.innerHTML = `
+                <div class="text-center py-6 flex flex-col items-center gap-3">
+                  <div class="text-5xl">🏆🦃🎉</div>
+                  <div class="text-xs font-bold uppercase tracking-widest text-amber-300">Thanksgiving Valedictorian</div>
+                  <h3 class="text-2xl sm:text-3xl font-black text-white">${escapeHtml(winner.name)}</h3>
+                  <div class="text-xl font-extrabold text-amber-300">Final Score: $${winner.score.toLocaleString()}</div>
+                  <p class="text-xs text-slate-300 max-w-sm mt-1">Officially smarter than a 5th grader! Happy Thanksgiving!</p>
+                </div>
+              `;
+            });
+          }
+        }
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      // Wire up static listeners
+      document.getElementById("btn-sound").addEventListener("click", () => {
+        soundEnabled = !soundEnabled;
+        document.getElementById("sound-icon").textContent = soundEnabled ? "🔊" : "🔇";
+        document.getElementById("sound-label").textContent = soundEnabled ? "Sound On" : "Muted";
+      });
+
+      document.getElementById("btn-teams").addEventListener("click", openTeamsModal);
+      document.getElementById("btn-close-teams").addEventListener("click", () => {
+        document.getElementById("teams-modal").classList.add("hidden");
+        document.getElementById("teams-modal").classList.remove("flex");
+        saveToStorage();
+        renderScoreboard();
+      });
+      document.getElementById("btn-save-teams").addEventListener("click", () => {
+        document.getElementById("teams-modal").classList.add("hidden");
+        document.getElementById("teams-modal").classList.remove("flex");
+        saveToStorage();
+        renderScoreboard();
+      });
+      document.getElementById("btn-add-team").addEventListener("click", () => {
+        if (state.teams.length < 4) {
+          const nextId = Math.max(0, ...state.teams.map(t => t.id)) + 1;
+          const defaults = ["Team Stuffing 🥖", "Team Cranberry 🍒", "Team Gravy 🥣", "Team Mashed Potatoes 🥔"];
+          state.teams.push({
+            id: nextId,
+            name: defaults[(state.teams.length) % defaults.length],
+            score: 0,
+            lifelines: { peek: true, copy: true, save: true }
+          });
+          renderTeamsEditor();
+        }
+      });
+
+      document.getElementById("btn-final").addEventListener("click", openFinalModal);
+      document.getElementById("btn-close-final").addEventListener("click", () => {
+        document.getElementById("final-modal").classList.add("hidden");
+        document.getElementById("final-modal").classList.remove("flex");
+      });
+
+      document.getElementById("btn-reset").addEventListener("click", () => {
+        document.getElementById("reset-modal").classList.remove("hidden");
+        document.getElementById("reset-modal").classList.add("flex");
+      });
+      document.getElementById("btn-cancel-reset").addEventListener("click", () => {
+        document.getElementById("reset-modal").classList.add("hidden");
+        document.getElementById("reset-modal").classList.remove("flex");
+      });
+      document.getElementById("btn-confirm-reset").addEventListener("click", () => {
+        state.usedClues = {};
+        state.dailyDoubles = pickDailyDoubles();
+        state.teams.forEach(t => {
+          t.score = 0;
+          t.lifelines = { peek: true, copy: true, save: true };
+        });
+        state.activeTeamId = state.teams[0].id;
+        saveToStorage();
+        renderScoreboard();
+        renderBoard();
+        document.getElementById("reset-modal").classList.add("hidden");
+        document.getElementById("reset-modal").classList.remove("flex");
+      });
+
+      document.getElementById("btn-close-clue").addEventListener("click", closeClueModal);
+      document.getElementById("btn-reset-buzzer").addEventListener("click", () => {
+        if (!state.activeClue) return;
+        state.activeClue.buzzedTeamId = null;
+        state.activeClue.lockedOutTeamIds = [];
+        sfxSelect();
+        renderBuzzerSection();
+        broadcastPhoneState();
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (!state.activeClue) return;
+        const ddGate = document.getElementById("daily-double-gate");
+        if (!ddGate.classList.contains("hidden")) return;
+        if (document.activeElement && document.activeElement.tagName === "INPUT") return;
+        if (e.code === "Space" || e.key === " ") {
+          e.preventDefault();
+          toggleTimer();
+          return;
+        }
+        const num = parseInt(e.key, 10);
+        if (num >= 1 && num <= state.teams.length) {
+          e.preventDefault();
+          triggerBuzz(state.teams[num - 1].id);
+        }
+      });
+      document.getElementById("btn-timer-toggle").addEventListener("click", toggleTimer);
+      document.getElementById("btn-timer-reset").addEventListener("click", () => {
+        stopTimer();
+        state.timerSeconds = 10;
+        updateTimerDisplay();
+      });
+
+      document.getElementById("btn-dd-confirm").addEventListener("click", () => {
+        const activeTeam = getActiveTeam();
+        const maxWager = Math.max(500, activeTeam.score);
+        let wager = parseInt(document.getElementById("dd-wager-input").value, 10);
+        if (isNaN(wager) || wager < 100) wager = 100;
+        if (wager > maxWager) wager = maxWager;
+        state.activeClue.value = wager;
+        document.getElementById("modal-value").textContent = `$${wager} (Wager)`;
+        document.getElementById("daily-double-gate").classList.add("hidden");
+        document.getElementById("daily-double-gate").classList.remove("flex");
+        document.getElementById("clue-body").classList.remove("hidden");
+        renderModalScoringButtons();
+      });
+
+      document.getElementById("btn-lifeline-peek").addEventListener("click", () => useLifeline("peek"));
+      document.getElementById("btn-lifeline-copy").addEventListener("click", () => useLifeline("copy"));
+      document.getElementById("btn-lifeline-save").addEventListener("click", () => useLifeline("save"));
+
+      document.getElementById("btn-reveal-answer").addEventListener("click", () => {
+        stopTimer();
+        sfxSelect();
+        document.getElementById("answer-box").classList.remove("hidden");
+        document.getElementById("btn-reveal-answer").classList.add("hidden");
+      });
+
+      // --- Wireless Phone Buzzers (PeerJS WebRTC) ---
+      let hostPeer = null;
+      let hostPeerId = null;
+      const phoneConnections = new Map(); // teamId -> DataConnection
+
+      function getShortRoomCode() {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let code = "";
+        for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+        return "won-" + code.toLowerCase();
+      }
+
+      function initHostPeer() {
+        if (hostPeer || typeof Peer === "undefined") return;
+        hostPeerId = getShortRoomCode();
+        try {
+          hostPeer = new Peer(hostPeerId);
+        } catch (err) {
+          document.getElementById("phone-host-status").textContent = "Could not start wireless room.";
+          return;
+        }
+
+        hostPeer.on("open", (id) => {
+          hostPeerId = id;
+          document.getElementById("phone-host-status").textContent = `Room active (${id}) — Ready for phones`;
+          renderPhoneQrGrid();
+        });
+
+        hostPeer.on("connection", (conn) => {
+          conn.on("open", () => {
+            const metaTeamId = conn.metadata && conn.metadata.teamId ? Number(conn.metadata.teamId) : null;
+            if (metaTeamId) {
+              phoneConnections.set(metaTeamId, conn);
+              updatePhoneBadge();
+              renderPhoneQrGrid();
+              sendPhoneStateTo(metaTeamId, conn);
+            }
+          });
+
+          conn.on("data", (data) => {
+            if (data && data.type === "register" && data.teamId) {
+              const tId = Number(data.teamId);
+              phoneConnections.set(tId, conn);
+              updatePhoneBadge();
+              renderPhoneQrGrid();
+              sendPhoneStateTo(tId, conn);
+            } else if (data && data.type === "buzz" && data.teamId) {
+              triggerBuzz(Number(data.teamId));
+            }
+          });
+
+          conn.on("close", () => {
+            for (const [tId, c] of phoneConnections.entries()) {
+              if (c === conn) phoneConnections.delete(tId);
+            }
+            updatePhoneBadge();
+            renderPhoneQrGrid();
+          });
+        });
+
+        hostPeer.on("error", () => {
+          document.getElementById("phone-host-status").textContent = "Connection error — check internet or refresh.";
+        });
+      }
+
+      function updatePhoneBadge() {
+        const badge = document.getElementById("phone-connected-badge");
+        const count = phoneConnections.size;
+        badge.textContent = count;
+        if (count > 0) badge.classList.remove("hidden");
+        else badge.classList.add("hidden");
+      }
+
+      function sendPhoneStateTo(teamId, conn) {
+        if (!conn || !conn.open) return;
+        let payload = { type: "status", mode: "idle", message: "Waiting for host to pick a clue..." };
+        if (state.activeClue) {
+          const { isDailyDouble, buzzedTeamId, lockedOutTeamIds } = state.activeClue;
+          if (isDailyDouble) {
+            payload = { type: "status", mode: "locked", message: "Double Credit clue — no buzzing needed." };
+          } else if (buzzedTeamId === teamId) {
+            payload = { type: "status", mode: "won", message: "YOU BUZZED IN FIRST! Answer now!" };
+          } else if (buzzedTeamId !== null) {
+            const winner = state.teams.find(t => t.id === buzzedTeamId);
+            payload = { type: "status", mode: "locked", message: `${winner ? winner.name : "Other team"} buzzed first!` };
+          } else if (lockedOutTeamIds.includes(teamId)) {
+            payload = { type: "status", mode: "locked", message: "Locked out for this clue." };
+          } else {
+            payload = { type: "status", mode: "ready", message: "BUZZ IN NOW!" };
+          }
+        }
+        try { conn.send(payload); } catch (e) {}
+      }
+
+      function broadcastPhoneState() {
+        for (const [teamId, conn] of phoneConnections.entries()) {
+          sendPhoneStateTo(teamId, conn);
+        }
+      }
+
+      function renderPhoneQrGrid() {
+        const grid = document.getElementById("phone-qr-grid");
+        if (!grid || !hostPeerId) return;
+        grid.innerHTML = "";
+        const baseUrl = window.location.href.split("#")[0];
+
+        state.teams.forEach((team, idx) => {
+          const url = `${baseUrl}#buzz=${encodeURIComponent(hostPeerId)}&team=${team.id}&name=${encodeURIComponent(team.name)}`;
+          const isConnected = phoneConnections.has(team.id);
+          const card = document.createElement("div");
+          card.className = "rounded-xl bg-slate-950 border border-slate-800 p-4 flex flex-col items-center gap-2.5 text-center";
+          const qrId = `qr-team-${team.id}`;
+          card.innerHTML = `
+            <div class="flex items-center justify-between w-full">
+              <span class="text-sm font-extrabold text-white">${escapeHtml(team.name)}</span>
+              <span class="text-[11px] font-bold ${isConnected ? "text-emerald-400" : "text-slate-400"}">
+                ${isConnected ? "🟢 Connected" : "⚪ Waiting"}
+              </span>
+            </div>
+            <div id="${qrId}" class="bg-white p-2.5 rounded-xl"></div>
+            <button type="button" class="w-full px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+              📋 Copy ${escapeHtml(team.name)} Link
+            </button>
+          `;
+          grid.appendChild(card);
+
+          if (typeof QRCode !== "undefined") {
+            new QRCode(document.getElementById(qrId), {
+              text: url,
+              width: 148,
+              height: 148,
+              colorDark: "#0f172a",
+              colorLight: "#ffffff"
+            });
+          }
+
+          const copyBtn = card.querySelector("button");
+          copyBtn.addEventListener("click", () => {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(url).catch(() => {});
+            } else {
+              const ta = document.createElement("textarea");
+              ta.value = url;
+              document.body.appendChild(ta);
+              ta.select();
+              try { document.execCommand("copy"); } catch (e) {}
+              document.body.removeChild(ta);
+            }
+            copyBtn.textContent = "✓ Copied!";
+            setTimeout(() => { copyBtn.textContent = `📋 Copy ${team.name} Link`; }, 1800);
+          });
+        });
+      }
+
+      document.getElementById("btn-phone-buzzers").addEventListener("click", () => {
+        initHostPeer();
+        renderPhoneQrGrid();
+        const modal = document.getElementById("phone-modal");
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      });
+      document.getElementById("btn-close-phone").addEventListener("click", () => {
+        document.getElementById("phone-modal").classList.add("hidden");
+        document.getElementById("phone-modal").classList.remove("flex");
+      });
+
+      function startPhoneClientMode(roomId, teamId, teamName) {
+        const view = document.getElementById("phone-client-view");
+        view.classList.remove("hidden");
+        view.classList.add("flex");
+        document.getElementById("client-team-name").textContent = teamName || `Team ${teamId}`;
+
+        const badge = document.getElementById("client-conn-badge");
+        const buzzBtn = document.getElementById("btn-client-buzz");
+        const buzzLabel = document.getElementById("client-buzz-label");
+        const statusMsg = document.getElementById("client-status-msg");
+
+        if (typeof Peer === "undefined") {
+          badge.textContent = "🔴 Buzzer library failed to load";
+          return;
+        }
+
+        const clientPeer = new Peer();
+        let conn = null;
+
+        function applyClientState(mode, message) {
+          statusMsg.textContent = message || "";
+          if (mode === "ready") {
+            buzzBtn.disabled = false;
+            buzzBtn.className = "w-64 h-64 rounded-full border-8 border-amber-300 bg-gradient-to-b from-amber-400 to-amber-600 text-slate-950 font-black text-2xl shadow-2xl shadow-amber-500/40 transition transform active:scale-95 flex flex-col items-center justify-center gap-2 select-none cursor-pointer";
+            buzzLabel.textContent = "BUZZ IN!";
+          } else if (mode === "won") {
+            buzzBtn.disabled = true;
+            buzzBtn.className = "w-64 h-64 rounded-full border-8 border-emerald-300 bg-emerald-500 text-slate-950 font-black text-2xl shadow-2xl shadow-emerald-500/40 flex flex-col items-center justify-center gap-2 select-none";
+            buzzLabel.textContent = "FIRST!";
+          } else if (mode === "locked") {
+            buzzBtn.disabled = true;
+            buzzBtn.className = "w-64 h-64 rounded-full border-8 border-rose-800 bg-rose-950 text-rose-300 font-black text-2xl flex flex-col items-center justify-center gap-2 select-none opacity-80";
+            buzzLabel.textContent = "LOCKED";
+          } else {
+            buzzBtn.disabled = true;
+            buzzBtn.className = "w-64 h-64 rounded-full border-8 border-slate-700 bg-slate-800 text-slate-400 font-black text-2xl flex flex-col items-center justify-center gap-2 select-none";
+            buzzLabel.textContent = "WAITING";
+          }
+        }
+
+        clientPeer.on("open", () => {
+          conn = clientPeer.connect(roomId, { metadata: { teamId } });
+          conn.on("open", () => {
+            badge.textContent = "🟢 Connected to Host";
+            badge.className = "mt-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+            conn.send({ type: "register", teamId });
+          });
+          conn.on("data", (data) => {
+            if (data && data.type === "status") {
+              applyClientState(data.mode, data.message);
+            }
+          });
+          conn.on("close", () => {
+            badge.textContent = "🔴 Disconnected — Refresh to reconnect";
+            badge.className = "mt-1 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40";
+            applyClientState("idle", "Lost connection to host.");
+          });
+        });
+
+        buzzBtn.addEventListener("click", () => {
+          if (!conn || !conn.open || buzzBtn.disabled) return;
+          sfxBuzzIn(teamId - 1);
+          conn.send({ type: "buzz", teamId });
+        });
+      }
+
+      // Initialize
+      const hash = window.location.hash || "";
+      if (hash.startsWith("#buzz=")) {
+        const params = new URLSearchParams(hash.slice(1));
+        const roomId = params.get("buzz");
+        const teamId = Number(params.get("team") || 1);
+        const teamName = params.get("name") || `Team ${teamId}`;
+        startPhoneClientMode(roomId, teamId, teamName);
+      } else {
+        loadFromStorage();
+        renderScoreboard();
+        renderBoard();
+      }
+    })();
+  </script>
+</body>
+</html>
